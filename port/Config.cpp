@@ -129,13 +129,13 @@ bool CConfig::parseCommandLine(int argc, char** argv)
 		//printf what user has provided
 		printf("\n**** Super Tokenizer ****\n");
 		printf("Prefix output files with '%s'\n", mOutfilePrefix.c_str());
-		printf("Analyze up to %d tuples\n", mNTupleCount);
-		printf("Spawn %d threads\n", mThreadCount);
+		printf("Analyze up to %ld tuples\n", mNTupleCount);
+		printf("Spawn %ld threads\n", mThreadCount);
 		printf("Keep Term Frequency: %.2f%% to %.2f%%\n", TERMFREQ_FROM*100, TERMFREQ_TO*100);
 		printf("Keep Doc Frequency: %.2f%% to %.2f%%\n", DOCFREQ_FROM*100, DOCFREQ_TO*100);
-		printf("Window size: %d\n", WINDOW_SIZE);
-		printf("Paragraph size: %d to %d\n", MINPARAGRAPH_SIZE, MAXPARAGRAPH_SIZE);
-		printf("Number of files: %d\n\n", mInputFilelist.size());
+		printf("Window size: %ld\n", WINDOW_SIZE);
+		printf("Paragraph size: %ld to %ld\n", MINPARAGRAPH_SIZE, MAXPARAGRAPH_SIZE);
+		printf("Number of files: %ld\n\n", mInputFilelist.size());
 	}
 	else 
 	{

@@ -101,6 +101,11 @@ void CThreadManager::parseFile(const string& docName)
 		P267_ungetc(c,fp);
 		while((c = P267_getcf(fp)) != P267_ENDFILE) 
 		{
+#if 0
+                    printf("analyzing... thread_id = %lu, file = %s\n",
+                            pthread_self(), docName.c_str());
+#endif
+
 			if (!isLegalChar(c) && (c!=P267_NEWLINE) && (c!=P267_CARRIAGERETURN))
 			{
 				wc++;
@@ -306,13 +311,13 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 		{
 			if (aToken.Token()[aToken.Token().length()-1] == ',') {
 				string s = aToken.Token().substr(0,aToken.Token().length()-1);
-				fprintf(ofp,"\"%s\",%s,%d\n",s.c_str(), filename, aToken.getPos());
+				fprintf(ofp,"\"%s\",%s,%ld\n",s.c_str(), filename, aToken.getPos());
 				//fprintf(ofp,"%-20s\t%-30s\t%-10d\n",s.c_str(), srcfilename, aToken.getPos());
 			} 
 			else {
-				fprintf(ofp,"\"%s\", %s,%d\n",aToken.getToken(),filename,aToken.getPos());
+				fprintf(ofp,"\"%s\", %s,%ld\n",aToken.getToken(),filename,aToken.getPos());
 				//fprintf(ofp,"%-20s\t%-30s\t%-10d\n",aToken.getToken(),srcfilename,aToken.getPos());
-				sprintf(sSQL, "exec sp_UpdateConcept %d, %s, %d, %d, %d, %d", aToken.DBID(), aToken.getToken(), 1, aToken.Freq(), aToken.DocFreq(),0); 
+				sprintf(sSQL, "exec sp_UpdateConcept %ld, %s, %d, %ld, %ld, %d", aToken.DBID(), aToken.getToken(), 1, aToken.Freq(), aToken.DocFreq(),0); 
 				string csSQL = sSQL;
 #if Commenting_out_db_stuff_for_now
 				if (!mDB->ExecuteSQL(csSQL))
@@ -327,6 +332,10 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 	}
 }
 
+void CThreadManager::setCurrentTuple(long n)
+{
+    mCurrTargetTupleCount = n;
+}
 #if 0
 bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
 {
@@ -513,14 +522,14 @@ void CThreadManager::serialize(long nTupleIndex, const string& outfilePrefix)
 	char sfilename[512];
 
 //	CSLock cslock2(mCSGuardTupleLists);
-	sprintf(sfilename,"%s.%dtuple.txt",outfilePrefix.c_str(),nTupleIndex);
-	printf("\nWriting %d-tuples to file '%s' ...\n", nTupleIndex, sfilename);
+	sprintf(sfilename,"%s.%ldtuple.txt",outfilePrefix.c_str(),nTupleIndex);
+	printf("\nWriting %ld-tuples to file '%s' ...\n", nTupleIndex, sfilename);
 	if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
 	{
 		mTupleLists[nTupleIndex].serialize(fpOut, mDB, mMasterTokenCount, (long) mInputFileList->size());
 		P267_close(fpOut);
 	}
-	printf("Writing %d-tuples completed.\n", nTupleIndex);
+	printf("Writing %ld-tuples completed.\n", nTupleIndex);
 }
 
 
@@ -571,7 +580,7 @@ bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens)
 
 	for(ii=lsTokens.begin(); ii<lsTokens.end(); ii++)
 	{
-		fprintf(mfpMasterTokens,"%-30s   %-50s   %-10d\n", ii->Token().c_str(), ii->LastDocFound().c_str(), ii->getPos());
+		fprintf(mfpMasterTokens,"%-30s   %-50s   %-10ld\n", ii->Token().c_str(), ii->LastDocFound().c_str(), ii->getPos());
 		mMasterTokenCount++;
 		//mMasterTokenList.push_back(*ii);
 	}
@@ -581,7 +590,6 @@ bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens)
 }
 
 
-#if 0
 void CThreadManager::openMasterTokensFile(const string& outfilePrefix)
 {
 	char sfilename[512];
@@ -598,11 +606,13 @@ void CThreadManager::openMasterTokensFile(const string& outfilePrefix)
 void CThreadManager::closeMasterTokensFile()
 {
 	if (mfpMasterTokens)
-	{	fprintf(mfpMasterTokens,"Total token count: %d\n", mMasterTokenCount);
+	{	fprintf(mfpMasterTokens,"Total token count: %ld\n", mMasterTokenCount);
 		P267_close(mfpMasterTokens);
 	}
 	mfpMasterTokens=NULL;
 }
+
+#if 0
 
 void CThreadManager::InitFromDB(CDataStorage *pdb) 
 { 

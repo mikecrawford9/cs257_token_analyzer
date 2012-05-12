@@ -46,7 +46,6 @@ class CThreadManager
 protected:
 //	DWORD ThreadProc();
 	bool mergeUSAddress(deque<CToken>& lsTokens, int& wc);
-	void parseFile(const string& docName);
 	bool permuteParagraph(long targetTupleCount, const string& docName, deque<CToken>& lsTokens, CFreqList& freqTuples);
 	bool permuteParagraph_r(long nDepth, long targetTupleCount, long nToken1Pos, const char* sPrefix, long nStartIdx, long nEndIdx, const string& docName, deque<CToken>& lsTokens, CFreqList& freqTuples);
 	bool mergeTupleList(long targetTupleCount, CFreqList& freqTuples);
@@ -60,8 +59,10 @@ public:
 	void InitThreads(int threadcount);
 	void EndThreads();
 
-	bool parseNtuple(long n, const string& sFilePrefix);
+        void setCurrentTuple(long n);
+//	bool parseNtuple(long n, const string& sFilePrefix);
 	bool pruneNtuple(long n);
+	void parseFile(const string& docName);
 	void SetInputFileList(std::deque<string>* fl);
 	void toFiles(const string& outfilePrefix);
 	void serialize(long nTupleIndex, const string& outfilePrefix);

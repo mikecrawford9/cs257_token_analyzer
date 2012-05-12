@@ -1,7 +1,7 @@
-Harry Potter data\(3)HP1.txt
-Harry Potter data\(3)HP2.txt
-Harry Potter data\(3)HP3.txt
-Harry Potter data\(3)HP4.txt
-Harry Potter data\(3)HP6.txt
-Harry Potter data\(3)HP7.txt
+../../HarryPotterData/HP1.txt
+../../HarryPotterData/HP2.txt
+../../HarryPotterData/HP3.txt
+../../HarryPotterData/HP4.txt
+../../HarryPotterData/HP6.txt
+../../HarryPotterData/HP7.txt
 

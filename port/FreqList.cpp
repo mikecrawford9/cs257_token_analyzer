@@ -62,7 +62,7 @@ void CFreqList::mergeToken(CToken& token, long& nextDBID)
 
 void CFreqList::serialize(P267_FILE *ofp, CDataStorage *pDB, long totalTokenCount, long totalDocCount)
 {
-	fprintf(ofp,"Total rows: %d\n==========================\n", mList.size());
+	fprintf(ofp,"Total rows: %ld\n==========================\n", mList.size());
 	//fprintf(ofp,"Token     \tTermFreq     \tTermFreq%%     \tDocFreq     \tDocFreq%%\n");
 	fprintf(ofp,"%-50s   %-5s   %-10s   %-5s   %-10s\n", "Token", "TF", "TF%", "DF", "DF%");
 	fprintf(ofp,"-------------------------------------------------------------------------------------------\n");
@@ -77,9 +77,9 @@ void CFreqList::serialize(P267_FILE *ofp, CDataStorage *pDB, long totalTokenCoun
 		CToken& t = (it->second);
 		aDocFreqPercent = t.DocFreq()/(double)totalDocCount;
 		aTermFreqPercent = t.Freq()/(double)totalTokenCount;
-		fprintf(ofp,"%-50s   %-5d   %-10lf   %-5d   %-10lf\n", t.Key().c_str(), t.Freq(), aTermFreqPercent, t.DocFreq(), aDocFreqPercent);
+		fprintf(ofp,"%-50s   %-5ld   %-10lf   %-5ld   %-10lf\n", t.Key().c_str(), t.Freq(), aTermFreqPercent, t.DocFreq(), aDocFreqPercent);
 
-		sprintf(sSQL, "exec sp_UpdateConcept %d, \"%s\", %d, %d, %d, %d", t.DBID(), t.getToken(), 1, t.Freq(), t.DocFreq(),0); 
+		sprintf(sSQL, "exec sp_UpdateConcept %ld, \"%s\", %d, %ld, %ld, %d", t.DBID(), t.getToken(), 1, t.Freq(), t.DocFreq(),0); 
 		csSQL = sSQL;
 		if (!pDB->ExecuteSQL(csSQL))
 		{
@@ -110,7 +110,7 @@ bool CFreqList::pruneDocFreq(double bottomPercent, double topPercent, long total
 		}
 	}
 
-	printf("pruneDocFreq removing %d of %d = %d\n", lsToPrune.size(), mList.size(), mList.size()-lsToPrune.size() );
+	printf("pruneDocFreq removing %ld of %ld = %ld\n", lsToPrune.size(), mList.size(), mList.size()-lsToPrune.size() );
 		
 	// Now do the actual pruning
 	deque<string>::iterator pruneIt = lsToPrune.begin();
