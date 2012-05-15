@@ -16,6 +16,10 @@ class CThreadManager
 	CDataStorage *mDB;
 	long mNextConcept_DBID;
 
+        pthread_mutex_t tuple_lists_lock;// = PTHREAD_MUTEX_INITIALIZER;
+        pthread_mutex_t master_list_lock;// = PTHREAD_MUTEX_INITIALIZER;
+
+
 //	int mThreadCount;
 
 //	HANDLE *mThreadHandles;
@@ -49,7 +53,7 @@ protected:
 	bool permuteParagraph(long targetTupleCount, const string& docName, deque<CToken>& lsTokens, CFreqList& freqTuples);
 	bool permuteParagraph_r(long nDepth, long targetTupleCount, long nToken1Pos, const char* sPrefix, long nStartIdx, long nEndIdx, const string& docName, deque<CToken>& lsTokens, CFreqList& freqTuples);
 	bool mergeTupleList(long targetTupleCount, CFreqList& freqTuples);
-	bool mergeTokenList(deque<CToken>& lsTokens);
+	bool mergeTokenList(deque<CToken>& lsTokens, int mCurrTargetTupleCount);
 
 public:
 
@@ -59,11 +63,13 @@ public:
 	void InitThreads(int threadcount);
 	void EndThreads();
 
+#if 0
         void setCurrentTuple(long n);
         int  getCurrentTuple();
+#endif
 //	bool parseNtuple(long n, const string& sFilePrefix);
 	bool pruneNtuple(long n);
-	void parseFile(const string& docName);
+	void parseFile(const string& docName, int mCurrTargetTupleCount);
 	void SetInputFileList(std::deque<string>* fl);
 	void toFiles(const string& outfilePrefix);
 	void serialize(long nTupleIndex, const string& outfilePrefix);

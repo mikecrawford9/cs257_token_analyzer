@@ -8,7 +8,7 @@ $(prog):    $(filelist)
 	$(CC) -g -o $(prog) $(filelist) -lpthread
 
 clean:
-	rm -f $(prog) *.o
+	rm -f $(prog) *.o *\.tokens.txt *\.[1-7]tuple.txt core
 
 run:    $(prog)
-	$(prog) -lharrylist.txt -oout
+	rm -f *\.tokens.txt *\.[1-7]tuple.txt; $(prog) -lharrylist.txt -oout

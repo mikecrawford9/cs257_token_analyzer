@@ -37,8 +37,8 @@ static void *analyze(void *arg) {
             */
 
     for (i = 1; i <= theConfig.NTupleCount(); i++) {
-        threadManager.setCurrentTuple(i);
-        threadManager.parseFile(inputFile);
+//        threadManager.setCurrentTuple(i);
+        threadManager.parseFile(inputFile, i);
     }
 
     
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     initLegals();
     initStopWords();
 
+    threadManager.SetInputFileList(&theConfig.InputFileList());
     threadManager.openMasterTokensFile(theConfig.OutfilePrefix());
 
     for (i = 0; i < MAX_THREAD_COUNT; i++) {
@@ -77,8 +78,10 @@ int main(int argc, char *argv[])
     threadManager.closeMasterTokensFile();
 
     /* serialize all n-pair files */
-    threadManager.serialize(threadManager.getCurrentTuple() - 1,
-            theConfig.OutfilePrefix());
+//    threadManager.serialize(theConfig.NTupleCount(), theConfig.OutfilePrefix());
+    for (i = 1; i <= theConfig.NTupleCount(); i++) {
+        threadManager.serialize(i, theConfig.OutfilePrefix());
+    }
 
     return 0;
 }

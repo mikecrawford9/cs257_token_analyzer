@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TokenizerUtils.h"
 #include "DataStorage.h"
+#include <pthread.h>
 
 //#define WIN32_LEAN_AND_MEAN 
 
@@ -63,19 +64,22 @@ DWORD CThreadManager::ThreadProc()
 bool CThreadManager::mergeTupleList(long targetTupleCount, CFreqList& freqTuples)
 {
 //	CSLock cslock(mCSGuardTupleLists);
+    pthread_mutex_lock(&tuple_lists_lock);
 
-	map<string, CToken>& mapList = freqTuples.getList();
-	map<string, CToken>::iterator it;
-	for(it=mapList.begin(); it != mapList.end(); it++)
-	{
-		CToken& t = (it->second);
-		mTupleLists[targetTupleCount].mergeToken(t, mNextConcept_DBID);
-	}
+    map<string, CToken>& mapList = freqTuples.getList();
+    map<string, CToken>::iterator it;
+    for(it=mapList.begin(); it != mapList.end(); it++)
+    {
+            CToken& t = (it->second);
+            mTupleLists[targetTupleCount].mergeToken(t, mNextConcept_DBID);
+    }
 
-	return true;
+    pthread_mutex_unlock(&tuple_lists_lock);
+
+    return true;
 }
 
-void CThreadManager::parseFile(const string& docName)
+void CThreadManager::parseFile(const string& docName, int mCurrTargetTupleCount)
 {
 	P267_FILE *fp = P267_open(docName.c_str(), P267_IOREAD);
 	if (fp != NULL)
@@ -178,7 +182,7 @@ void CThreadManager::parseFile(const string& docName)
 					permuteParagraph(mCurrTargetTupleCount, docName, lsTokens, tempTupleList);
 
 					//mergeTupleList(mCurrTargetTupleCount, tempTupleList);
-					mergeTokenList(lsTokens);
+					mergeTokenList(lsTokens, mCurrTargetTupleCount);
 					lsTokens.clear();
 
 					////// Output to file 
@@ -194,10 +198,12 @@ void CThreadManager::parseFile(const string& docName)
 		//tempTupleList.pruneTermFreq(0.01, 0.3);
 		tempTupleList.pruneTermFreq(TERMFREQ_FROM, TERMFREQ_TO);
 
+printf("thread_id = %lu, temp_tuple_list = %p\n",
+        pthread_self(), &tempTupleList);
 		mergeTupleList(mCurrTargetTupleCount, tempTupleList);
 		tempTupleList.clear();
 
-		mergeTokenList(lsTokens);
+		mergeTokenList(lsTokens, mCurrTargetTupleCount);
 		lsTokens.clear();
 
 		lsTokens.clear();
@@ -332,6 +338,7 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 	}
 }
 
+#if 0
 void CThreadManager::setCurrentTuple(long n)
 {
     mCurrTargetTupleCount = n;
@@ -341,6 +348,7 @@ int CThreadManager::getCurrentTuple()
 {
     return mCurrTargetTupleCount;
 }
+#endif
 
 #if 0
 bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
@@ -409,12 +417,16 @@ bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
 bool CThreadManager::pruneNtuple(long n)
 {
 //	CSLock cslock(mCSGuardTupleLists);
+    pthread_mutex_lock(&tuple_lists_lock);
+
 	mTupleLists[n].pruneDocFreq(DOCFREQ_FROM, DOCFREQ_TO, (long) mInputFileList->size());
 
 	//if (n==1)
 	//	mTupleLists[n].pruneDocFreq(0.1, 0.5, (long) mInputFileList->size());
 	//else 
 		//mTupleLists[n].pruneDocFreq(0.003, 0.5, (long) mInputFileList->size());	
+
+    pthread_mutex_unlock(&tuple_lists_lock);
 
 	return true;
 }
@@ -432,14 +444,15 @@ CThreadManager::CThreadManager()
 
 	mMasterTokenCount = 0;
 #endif
+    pthread_mutex_init(&tuple_lists_lock, NULL);
+    pthread_mutex_init(&master_list_lock, NULL);
+
 }
 
-#if 0
 void CThreadManager::SetInputFileList(std::deque<string>* fl)
 {
 	mInputFileList=fl;
 }
-#endif
 
 CThreadManager::~CThreadManager()
 {
@@ -452,6 +465,8 @@ CThreadManager::~CThreadManager()
 	CloseHandle(mTaskCompletedEvent);
 #endif
 
+    pthread_mutex_destroy(&tuple_lists_lock);
+    pthread_mutex_destroy(&master_list_lock);
 }
 
 
@@ -528,6 +543,8 @@ void CThreadManager::serialize(long nTupleIndex, const string& outfilePrefix)
 	char sfilename[512];
 
 //	CSLock cslock2(mCSGuardTupleLists);
+    pthread_mutex_lock(&tuple_lists_lock);
+
 	sprintf(sfilename,"%s.%ldtuple.txt",outfilePrefix.c_str(),nTupleIndex);
 	printf("\nWriting %ld-tuples to file '%s' ...\n", nTupleIndex, sfilename);
 	if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
@@ -536,6 +553,8 @@ void CThreadManager::serialize(long nTupleIndex, const string& outfilePrefix)
 		P267_close(fpOut);
 	}
 	printf("Writing %ld-tuples completed.\n", nTupleIndex);
+        
+    pthread_mutex_unlock(&tuple_lists_lock);
 }
 
 
@@ -576,12 +595,13 @@ void CThreadManager::toFiles(const string& outfilePrefix)
 #endif
 
 // Only do merge when mCurrTargetTupleCount==1
-bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens)
+bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens, int mCurrTargetTupleCount)
 {
 	if (mCurrTargetTupleCount!=1 || mfpMasterTokens==NULL)
 		return false;
 
 //	CSLock cslock(mCSGuardMasterList);
+    pthread_mutex_lock(&master_list_lock);
 	deque<CToken>::iterator ii;
 
 	for(ii=lsTokens.begin(); ii<lsTokens.end(); ii++)
@@ -591,6 +611,8 @@ bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens)
 		//mMasterTokenList.push_back(*ii);
 	}
 	fprintf(mfpMasterTokens,"<p>\n");
+
+    pthread_mutex_unlock(&master_list_lock);
 
 	return true;
 }
