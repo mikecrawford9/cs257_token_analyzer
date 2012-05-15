@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
     threadManager.closeMasterTokensFile();
 
     /* serialize all n-pair files */
-//    threadManager.serialize(theConfig.NTupleCount(), theConfig.OutfilePrefix());
     for (i = 1; i <= theConfig.NTupleCount(); i++) {
         threadManager.serialize(i, theConfig.OutfilePrefix());
     }
