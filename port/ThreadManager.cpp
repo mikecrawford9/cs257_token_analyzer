@@ -82,6 +82,7 @@ bool CThreadManager::mergeTupleList(long targetTupleCount, CFreqList& freqTuples
 void CThreadManager::parseFile(const string& docName, int mCurrTargetTupleCount)
 {
 	P267_FILE *fp = P267_open(docName.c_str(), P267_IOREAD);
+
 	if (fp != NULL)
 	{
 		CFreqList tempTupleList;
@@ -92,6 +93,9 @@ void CThreadManager::parseFile(const string& docName, int mCurrTargetTupleCount)
 
 		int c,d=10;
 		int wc = 0;
+
+                printf("Analyzing %d-tuples for %s [tid=%lu]\n",
+                        mCurrTargetTupleCount, docName.c_str(), pthread_self());
 
 		//find file size
 		fseek(fp, 0, SEEK_END); // seek to end of file 
@@ -198,8 +202,8 @@ void CThreadManager::parseFile(const string& docName, int mCurrTargetTupleCount)
 		//tempTupleList.pruneTermFreq(0.01, 0.3);
 		tempTupleList.pruneTermFreq(TERMFREQ_FROM, TERMFREQ_TO);
 
-printf("thread_id = %lu, temp_tuple_list = %p\n",
-        pthread_self(), &tempTupleList);
+//printf("thread_id = %lu, temp_tuple_list = %p\n",
+//        pthread_self(), &tempTupleList);
 		mergeTupleList(mCurrTargetTupleCount, tempTupleList);
 		tempTupleList.clear();
 
@@ -322,6 +326,7 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 			} 
 			else {
 				fprintf(ofp,"\"%s\", %s,%ld\n",aToken.getToken(),filename,aToken.getPos());
+#if 0   // Commented out until DB output is supported.
 				//fprintf(ofp,"%-20s\t%-30s\t%-10d\n",aToken.getToken(),srcfilename,aToken.getPos());
 				sprintf(sSQL, "exec sp_UpdateConcept %ld, %s, %d, %ld, %ld, %d", aToken.DBID(), aToken.getToken(), 1, aToken.Freq(), aToken.DocFreq(),0); 
 				string csSQL = sSQL;
@@ -330,6 +335,7 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 				{
 					printf("** Error executing: %s\n", sSQL);
 				}
+#endif
 #endif
 			}
 		}
