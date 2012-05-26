@@ -336,6 +336,12 @@ void CThreadManager::setCurrentTuple(long n)
 {
     mCurrTargetTupleCount = n;
 }
+
+int CThreadManager::getCurrentTuple()
+{
+    return mCurrTargetTupleCount;
+}
+
 #if 0
 bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
 {

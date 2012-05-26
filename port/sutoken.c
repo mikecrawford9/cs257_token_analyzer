@@ -74,8 +74,11 @@ int main(int argc, char *argv[])
         pthread_join(threads[i], NULL);
     }
 
+    threadManager.closeMasterTokensFile();
+
     /* serialize all n-pair files */
-    /* serialize(); */
+    threadManager.serialize(threadManager.getCurrentTuple() - 1,
+            theConfig.OutfilePrefix());
 
     return 0;
 }

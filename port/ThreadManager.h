@@ -60,6 +60,7 @@ public:
 	void EndThreads();
 
         void setCurrentTuple(long n);
+        int  getCurrentTuple();
 //	bool parseNtuple(long n, const string& sFilePrefix);
 	bool pruneNtuple(long n);
 	void parseFile(const string& docName);
