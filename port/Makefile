@@ -12,3 +12,6 @@ clean:
 
 run:    $(prog)
 	rm -f *\.tokens.txt *\.[1-7]tuple.txt; $(prog) -lharrylist.txt -oout
+
+runwin: $(prog)
+	rm -f *\.tokens.txt *\.[1-7]tuple.txt; ./$(prog).exe -lharrylist.txt -oout
