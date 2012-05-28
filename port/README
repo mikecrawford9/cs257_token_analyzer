@@ -1,0 +1,17 @@
+System requirements:
+* ubuntu
+* oracle (how to setup on ubuntu: https://forums.oracle.com/forums/thread.jspa?threadID=2301639)
+* ocilib (http://orclib.sourceforge.net)
+
+How to use:
+* Open sqlplus and run '@tables.sql'.
+* Change line 21 of DataStorage.cpp with the proper oracle ssid, user name, and password.
+* compile using 'make'.
+* run using 'make run'.
+
+Note:
+* Before each run, do 'drop table Concepts' and rerun '@tables.sql' from sqlplus.
+
+Todo:
+* reading from sutoken.config should be done; instead of manually changing line 21 of DataStorage.cpp as above.
+* Add code for reading previous analysis data in from oracle; when fixed, the note from above will be unnecessary.
