@@ -52,5 +52,3 @@ int P267_isalphanum(int c)
 {
 	return isalnum(c);
 }
-
-

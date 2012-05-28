@@ -20,7 +20,6 @@ static void *analyze(void *arg) {
     const char *inputFile;
 
     while (1) {
-    //    printf("%d", theConfig.InputFileList().size());
         pthread_mutex_lock(&findex_lock);
         if (findex >= theConfig.InputFileList().size()) {
             pthread_mutex_unlock(&findex_lock);
@@ -32,13 +31,8 @@ static void *analyze(void *arg) {
         pthread_mutex_lock(&flist_lock);
         inputFile = theConfig.InputFileList().at(findex_l).c_str();
         pthread_mutex_unlock(&flist_lock);
-        /*
-        printf("analyzing... thread_id = %lu, file = %s\n",
-                pthread_self(), inputFile);
-                */
 
         for (i = 1; i <= theConfig.NTupleCount(); i++) {
-    //        threadManager.setCurrentTuple(i);
             threadManager.parseFile(inputFile, i);
         }
     }

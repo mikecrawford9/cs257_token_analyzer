@@ -19,7 +19,6 @@ class CThreadManager
         pthread_mutex_t tuple_lists_lock;// = PTHREAD_MUTEX_INITIALIZER;
         pthread_mutex_t master_list_lock;// = PTHREAD_MUTEX_INITIALIZER;
 
-
 //	int mThreadCount;
 
 //	HANDLE *mThreadHandles;
@@ -45,7 +44,6 @@ class CThreadManager
 	P267_FILE *mfpMasterTokens;
 	long mMasterTokenCount;
 
-
 //	static DWORD WINAPI ThreadLaunch( LPVOID lpParam );
 protected:
 //	DWORD ThreadProc();
@@ -63,10 +61,6 @@ public:
 	void InitThreads(int threadcount);
 	void EndThreads();
 
-#if 0
-        void setCurrentTuple(long n);
-        int  getCurrentTuple();
-#endif
 //	bool parseNtuple(long n, const string& sFilePrefix);
 	bool pruneNtuple(long n);
 	void parseFile(const string& docName, int mCurrTargetTupleCount);

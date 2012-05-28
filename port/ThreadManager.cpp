@@ -3,64 +3,6 @@
 #include "DataStorage.h"
 #include <pthread.h>
 
-//#define WIN32_LEAN_AND_MEAN 
-
-
-//Each thread instance will run its own instance of this function.
-#if 0
-DWORD CThreadManager::ThreadProc() 
-{
-	static int nextThreadID=0;
-	int threadID=++nextThreadID;
-	printf("ThreadProc(ThreadID=%d) started\n",threadID);
-	
-	HANDLE events[]={mEndEvent, mTaskAvailEvent};
-
-	long fileIndex;
-	while (TRUE)
-	{
-		DWORD waitNum=WaitForMultipleObjects(2,events,FALSE, INFINITE);
-		//printf("ThreadProc(ID=%d) WaitForMultiple returned %d\n",threadID, waitNum);
-		if (waitNum==WAIT_OBJECT_0)
-		{
-			//printf("ThreadProc(ID=%d) received mEndEvent\n",threadID);
-			break; // app ending
-		}
-
-		while (TRUE)
-		{
-			{				
-				CSLock cslock(mCSFileListIndex); // Get access to the file index
-
-				if (mCurrFileListIndex >= (long) mInputFileList->size())  
-				{	// The last thread to finish the list should indicate no more files left.
-					//printf("ThreadProc(ID=%d) ResetEvent(mTaskAvailEvent);\n",threadID);
-					ResetEvent(mTaskAvailEvent);
-					break; // Done, no more. Note this 'If' check is needed in case of race condition
-				}
-
-				fileIndex = mCurrFileListIndex++;
-			}
-
-			//printf("ThreadProc(ID=%d) parseFile(%s)\n",threadID, mInputFileList->at(fileIndex).c_str());
-			parseFile(mInputFileList->at(fileIndex).c_str());
-
-			{
-				CSLock cslock(mCSFileListIndex);
-				mCurrFilesProcessed++;  // whether succeeded or not, we have consumed this file
-			}
-		}
-	
-		//printf("ThreadProc(ID=%d) task done, SetEvent(mTaskCompletedEvent)\n",threadID);
-		SetEvent(mTaskCompletedEvent);
-	}
-
-	printf("ThreadProc(ThreadID=%d) completed\n",threadID);
-	return 0;
-}
-#endif
-
-
 bool CThreadManager::mergeTupleList(long targetTupleCount, CFreqList& freqTuples)
 {
 //	CSLock cslock(mCSGuardTupleLists);
@@ -344,82 +286,6 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 	}
 }
 
-#if 0
-void CThreadManager::setCurrentTuple(long n)
-{
-    mCurrTargetTupleCount = n;
-}
-
-int CThreadManager::getCurrentTuple()
-{
-    return mCurrTargetTupleCount;
-}
-#endif
-
-#if 0
-bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
-{
-	printf("\n***** parseNtuple(analyzing %d-tuples) started *****\n",n);
-	bool brc=true;
-	
-	bool writeToFileDone=false;
-
-	{
-		CSLock cslock(mCSFileListIndex);
-		mCurrFileListIndex = 0;
-		mCurrFilesProcessed = 0;
-		mCurrTargetTupleCount = n;
-	}
-
-	SetEvent(mTaskAvailEvent);
-	ResetEvent(mTaskCompletedEvent);
-
-	//long completionCountdown =mThreadCount;
-
-	long iProgress=0;
-	while(true)
-	{
-		iProgress++;
-		//{
-		//	printf("parseNtuple waited mTaskCompletedEvent a Thread has completed\n");
-		//	completionCountdown--;
-		//}
-		//printf("parseNtuple waited mTaskCompletedEvent completionCountdown=%d\n",completionCountdown);
-
-		WaitForSingleObject(mTaskCompletedEvent, 1000);
-		{
-			CSLock cslock(mCSFileListIndex);
-			if (mCurrFilesProcessed >= (long) mInputFileList->size())  
-			{
-				printf("\b\b\b\b\b\b\b\b\b\b\b[100%%][-]");
-				break; // mCurrTargetTupleCount task is done!
-			} 
-			//printf("parseNtuple: mCurrFileListIndex=%d\n",mCurrFileListIndex);
-			//printf("[%05.2lf%%]", mCurrFilesProcessed/(double) mInputFileList->size());
-			printf("\b\b\b\b\b\b\b\b\b\b\b[%05.2lf%%][%c]", mCurrFilesProcessed*100.0/mInputFileList->size(), PROGRESS[iProgress%3]);
-		}
-
-		if (!writeToFileDone)
-		{
-			//use this cpu cycle to write to file of previous tuple count
-			writeToFileDone=true;
-			if (mCurrTargetTupleCount>=2)
-			{
-				closeMasterTokensFile();
-				serialize(mCurrTargetTupleCount-1, sFilePrefix);
-			}
-		}
-	}
-
-	ResetEvent(mTaskAvailEvent);
-
-	pruneNtuple(n);
-	printf("\n===== parseNtuple(analyzing %d-tuples) completed =====\n",n);
-
-	return brc;
-}
-#endif
-
 bool CThreadManager::pruneNtuple(long n)
 {
 //	CSLock cslock(mCSGuardTupleLists);
@@ -439,17 +305,6 @@ bool CThreadManager::pruneNtuple(long n)
 
 CThreadManager::CThreadManager()
 { 
-#if 0
-	InitializeCriticalSection(&mCSFileListIndex); 
-	InitializeCriticalSection(&mCSGuardTupleLists);
-	InitializeCriticalSection(&mCSGuardMasterList);
-
-	mTaskAvailEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	mEndEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	mTaskCompletedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-	mMasterTokenCount = 0;
-#endif
     pthread_mutex_init(&tuple_lists_lock, NULL);
     pthread_mutex_init(&master_list_lock, NULL);
 
@@ -462,38 +317,9 @@ void CThreadManager::SetInputFileList(std::deque<string>* fl)
 
 CThreadManager::~CThreadManager()
 {
-#if 0
-	DeleteCriticalSection(&mCSFileListIndex);
-	DeleteCriticalSection(&mCSGuardTupleLists);
-	DeleteCriticalSection(&mCSGuardMasterList);
-	CloseHandle(mTaskAvailEvent);
-	CloseHandle(mEndEvent);
-	CloseHandle(mTaskCompletedEvent);
-#endif
-
     pthread_mutex_destroy(&tuple_lists_lock);
     pthread_mutex_destroy(&master_list_lock);
 }
-
-
-#if 0
-void CThreadManager::InitThreads(int threadcount)
-{
-	mThreadCount = threadcount;
-	mThreadHandles = new HANDLE[mThreadCount];
-
-	for (int i=0; i<mThreadCount; i++)
-	{
-		mThreadHandles[i] = CreateThread(NULL, 0, ThreadLaunch, this, 0, NULL);
-	}
-}
-
-
-void CThreadManager::EndThreads()
-{
-	SetEvent(mEndEvent);
-}
-#endif
 
 // form the address into a single token
 bool CThreadManager::mergeUSAddress(deque<CToken>& lsTokens, int& wc)
@@ -562,43 +388,6 @@ void CThreadManager::serialize(long nTupleIndex, const string& outfilePrefix)
         
     pthread_mutex_unlock(&tuple_lists_lock);
 }
-
-
-#if 0
-void CThreadManager::toFiles(const string& outfilePrefix)
-{
-	printf("Writing to files...\n");
-	P267_FILE *fpOut;
-	char sfilename[512];
-
-	//sprintf(sfilename,"%s.tokens.txt",outfilePrefix.c_str());
-	//if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
-	//{
-	//	CSLock cslock(mCSGuardMasterList);
-	//	deque<CToken>::iterator ii;
-
-	//	fprintf(fpOut,"Total rows: %d\n==========================\n", mMasterTokenList.size());
-	//	fprintf(fpOut,"Token     \tDocName     \tPosition\n");
-	//	fprintf(fpOut,"--------------------------------------\n");
-	//	for(ii= mMasterTokenList.begin(); ii<mMasterTokenList.end(); ii++)
-	//	{ 
-	//		fprintf(fpOut,"\"%s\", %s, %d\n", ii->Token().c_str(), "null", ii->getPos());
-	//	}
-	//	P267_close(fpOut);
-	//}
-
-	CSLock cslock2(mCSGuardTupleLists);
-	for (int i=1; i <= 6; i++)
-	{
-		sprintf(sfilename,"%s.%dtuple.txt",outfilePrefix.c_str(),i);
-		if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
-		{
-			mTupleLists[i].serialize(fpOut, mDB, mMasterTokenCount, (long) mInputFileList->size());
-			P267_close(fpOut);
-		}
-	}
-}
-#endif
 
 // Only do merge when mCurrTargetTupleCount==1
 bool CThreadManager::mergeTokenList(deque<CToken>& lsTokens, int mCurrTargetTupleCount)
@@ -707,4 +496,203 @@ void CThreadManager::InitFromDB(CDataStorage *pdb)
 
 	//Build the mTupleLists from DB
 }
+#endif
+
+
+/////////////////// GARBAGE CODE TAKEN OUT DURING PORTING ///////////////////
+/////////////////// FEEL FREE TO REMOVE COMPLETELY //////////////////////////
+
+//#define WIN32_LEAN_AND_MEAN 
+
+//Each thread instance will run its own instance of this function.
+
+#if 0
+DWORD CThreadManager::ThreadProc() 
+{
+	static int nextThreadID=0;
+	int threadID=++nextThreadID;
+	printf("ThreadProc(ThreadID=%d) started\n",threadID);
+	
+	HANDLE events[]={mEndEvent, mTaskAvailEvent};
+
+	long fileIndex;
+	while (TRUE)
+	{
+		DWORD waitNum=WaitForMultipleObjects(2,events,FALSE, INFINITE);
+		//printf("ThreadProc(ID=%d) WaitForMultiple returned %d\n",threadID, waitNum);
+		if (waitNum==WAIT_OBJECT_0)
+		{
+			//printf("ThreadProc(ID=%d) received mEndEvent\n",threadID);
+			break; // app ending
+		}
+
+		while (TRUE)
+		{
+			{				
+				CSLock cslock(mCSFileListIndex); // Get access to the file index
+
+				if (mCurrFileListIndex >= (long) mInputFileList->size())  
+				{	// The last thread to finish the list should indicate no more files left.
+					//printf("ThreadProc(ID=%d) ResetEvent(mTaskAvailEvent);\n",threadID);
+					ResetEvent(mTaskAvailEvent);
+					break; // Done, no more. Note this 'If' check is needed in case of race condition
+				}
+
+				fileIndex = mCurrFileListIndex++;
+			}
+
+			//printf("ThreadProc(ID=%d) parseFile(%s)\n",threadID, mInputFileList->at(fileIndex).c_str());
+			parseFile(mInputFileList->at(fileIndex).c_str());
+
+			{
+				CSLock cslock(mCSFileListIndex);
+				mCurrFilesProcessed++;  // whether succeeded or not, we have consumed this file
+			}
+		}
+	
+		//printf("ThreadProc(ID=%d) task done, SetEvent(mTaskCompletedEvent)\n",threadID);
+		SetEvent(mTaskCompletedEvent);
+	}
+
+	printf("ThreadProc(ThreadID=%d) completed\n",threadID);
+	return 0;
+}
+
+bool CThreadManager::parseNtuple(long n, const string& sFilePrefix)
+{
+	printf("\n***** parseNtuple(analyzing %d-tuples) started *****\n",n);
+	bool brc=true;
+	
+	bool writeToFileDone=false;
+
+	{
+		CSLock cslock(mCSFileListIndex);
+		mCurrFileListIndex = 0;
+		mCurrFilesProcessed = 0;
+		mCurrTargetTupleCount = n;
+	}
+
+	SetEvent(mTaskAvailEvent);
+	ResetEvent(mTaskCompletedEvent);
+
+	//long completionCountdown =mThreadCount;
+
+	long iProgress=0;
+	while(true)
+	{
+		iProgress++;
+		//{
+		//	printf("parseNtuple waited mTaskCompletedEvent a Thread has completed\n");
+		//	completionCountdown--;
+		//}
+		//printf("parseNtuple waited mTaskCompletedEvent completionCountdown=%d\n",completionCountdown);
+
+		WaitForSingleObject(mTaskCompletedEvent, 1000);
+		{
+			CSLock cslock(mCSFileListIndex);
+			if (mCurrFilesProcessed >= (long) mInputFileList->size())  
+			{
+				printf("\b\b\b\b\b\b\b\b\b\b\b[100%%][-]");
+				break; // mCurrTargetTupleCount task is done!
+			} 
+			//printf("parseNtuple: mCurrFileListIndex=%d\n",mCurrFileListIndex);
+			//printf("[%05.2lf%%]", mCurrFilesProcessed/(double) mInputFileList->size());
+			printf("\b\b\b\b\b\b\b\b\b\b\b[%05.2lf%%][%c]", mCurrFilesProcessed*100.0/mInputFileList->size(), PROGRESS[iProgress%3]);
+		}
+
+		if (!writeToFileDone)
+		{
+			//use this cpu cycle to write to file of previous tuple count
+			writeToFileDone=true;
+			if (mCurrTargetTupleCount>=2)
+			{
+				closeMasterTokensFile();
+				serialize(mCurrTargetTupleCount-1, sFilePrefix);
+			}
+		}
+	}
+
+	ResetEvent(mTaskAvailEvent);
+
+	pruneNtuple(n);
+	printf("\n===== parseNtuple(analyzing %d-tuples) completed =====\n",n);
+
+	return brc;
+}
+
+CThreadManager::CThreadManager()
+{ 
+	InitializeCriticalSection(&mCSFileListIndex); 
+	InitializeCriticalSection(&mCSGuardTupleLists);
+	InitializeCriticalSection(&mCSGuardMasterList);
+
+	mTaskAvailEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	mEndEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	mTaskCompletedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	mMasterTokenCount = 0;
+}
+
+CThreadManager::~CThreadManager()
+{
+	DeleteCriticalSection(&mCSFileListIndex);
+	DeleteCriticalSection(&mCSGuardTupleLists);
+	DeleteCriticalSection(&mCSGuardMasterList);
+	CloseHandle(mTaskAvailEvent);
+	CloseHandle(mEndEvent);
+	CloseHandle(mTaskCompletedEvent);
+}
+
+void CThreadManager::InitThreads(int threadcount)
+{
+	mThreadCount = threadcount;
+	mThreadHandles = new HANDLE[mThreadCount];
+
+	for (int i=0; i<mThreadCount; i++)
+	{
+		mThreadHandles[i] = CreateThread(NULL, 0, ThreadLaunch, this, 0, NULL);
+	}
+}
+
+
+void CThreadManager::EndThreads()
+{
+	SetEvent(mEndEvent);
+}
+
+
+void CThreadManager::toFiles(const string& outfilePrefix)
+{
+	printf("Writing to files...\n");
+	P267_FILE *fpOut;
+	char sfilename[512];
+
+	//sprintf(sfilename,"%s.tokens.txt",outfilePrefix.c_str());
+	//if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
+	//{
+	//	CSLock cslock(mCSGuardMasterList);
+	//	deque<CToken>::iterator ii;
+
+	//	fprintf(fpOut,"Total rows: %d\n==========================\n", mMasterTokenList.size());
+	//	fprintf(fpOut,"Token     \tDocName     \tPosition\n");
+	//	fprintf(fpOut,"--------------------------------------\n");
+	//	for(ii= mMasterTokenList.begin(); ii<mMasterTokenList.end(); ii++)
+	//	{ 
+	//		fprintf(fpOut,"\"%s\", %s, %d\n", ii->Token().c_str(), "null", ii->getPos());
+	//	}
+	//	P267_close(fpOut);
+	//}
+
+	CSLock cslock2(mCSGuardTupleLists);
+	for (int i=1; i <= 6; i++)
+	{
+		sprintf(sfilename,"%s.%dtuple.txt",outfilePrefix.c_str(),i);
+		if ((fpOut = P267_open(sfilename, P267_IOWRITE))!=NULL)
+		{
+			mTupleLists[i].serialize(fpOut, mDB, mMasterTokenCount, (long) mInputFileList->size());
+			P267_close(fpOut);
+		}
+	}
+}
+
 #endif
