@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "P267_Primitives.h"
 #include "Config.h"
+#include "DataStorage.h"
 
 static pthread_t threads[MAX_THREAD_COUNT];
 
@@ -15,6 +16,20 @@ CConfig theConfig;
 
 CThreadManager threadManager;
 
+CDataStorage theDB;
+
+static void oci_error_handler(OCI_Error *err)
+{
+    printf(
+            "code   :   ORA-%05i\n"
+            "msg    :   %s\n"
+            "sql    :   %s\n",
+            OCI_ErrorGetOCICode(err),
+            OCI_ErrorGetString(err),
+            OCI_GetSql(OCI_ErrorGetStatement(err))
+          );
+}
+
 static void *analyze(void *arg) {
     int findex_l, i;
     const char *inputFile;
@@ -23,7 +38,7 @@ static void *analyze(void *arg) {
         pthread_mutex_lock(&findex_lock);
         if (findex >= theConfig.InputFileList().size()) {
             pthread_mutex_unlock(&findex_lock);
-            return NULL;
+            break;
         }
         findex_l = findex++;
         pthread_mutex_unlock(&findex_lock);
@@ -36,12 +51,13 @@ static void *analyze(void *arg) {
             threadManager.parseFile(inputFile, i);
         }
     }
-    
+
     return NULL;
 }
 
 int main(int argc, char *argv[])
 {
+    CBenchmark stopWatch;
     int i;
 
     /*
@@ -51,6 +67,12 @@ int main(int argc, char *argv[])
     if(!theConfig.parseConfig()) {
         perror("config parse failed");
         exit(EXIT_FAILURE);
+    }
+
+    OCI_Initialize(oci_error_handler, NULL, OCI_ENV_DEFAULT);
+
+    if (!theDB.OpenConnection(theConfig.SQLDSN())) {
+        printf("DB open connectionf failed\n");
     }
 
     theConfig.parseCommandLine(argc, argv);
@@ -72,10 +94,20 @@ int main(int argc, char *argv[])
 
     threadManager.closeMasterTokensFile();
 
+    threadManager.setDataStorage(&theDB);
+
     /* serialize all n-pair files */
     for (i = 1; i <= theConfig.NTupleCount(); i++) {
         threadManager.serialize(i, theConfig.OutfilePrefix());
     }
+
+    long totalCount = threadManager.MasterTokenCount();
+    printf("\nProgram executed in %f seconds. Found %ld tokens. "
+            "Speed = %lf tokens/sec\n",
+            stopWatch.ElapsedSecs(), totalCount,
+            totalCount / (double)stopWatch.ElapsedSecs());
+
+    OCI_Cleanup();
 
     return 0;
 }

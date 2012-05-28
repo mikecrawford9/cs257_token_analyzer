@@ -71,7 +71,7 @@ void CFreqList::serialize(P267_FILE *ofp, CDataStorage *pDB, long totalTokenCoun
 	double aDocFreqPercent;
 	double aTermFreqPercent;
 	char sSQL[1000];
-	string csSQL;
+//	string csSQL;
 	for(it=mList.begin(); it != mList.end(); it++)
 	{
 		CToken& t = (it->second);
@@ -79,14 +79,12 @@ void CFreqList::serialize(P267_FILE *ofp, CDataStorage *pDB, long totalTokenCoun
 		aTermFreqPercent = t.Freq()/(double)totalTokenCount;
 		fprintf(ofp,"%-50s   %-5ld   %-10lf   %-5ld   %-10lf\n", t.Key().c_str(), t.Freq(), aTermFreqPercent, t.DocFreq(), aDocFreqPercent);
 
-#if 0   // Commented out till DB is supported.
-		sprintf(sSQL, "exec sp_UpdateConcept %ld, \"%s\", %d, %ld, %ld, %d", t.DBID(), t.getToken(), 1, t.Freq(), t.DocFreq(),0); 
-		csSQL = sSQL;
-		if (!pDB->ExecuteSQL(csSQL))
+		//sprintf(sSQL, "exec sp_UpdateConcept %ld, \"%s\", %d, %ld, %ld, %d", t.DBID(), t.getToken(), 1, t.Freq(), t.DocFreq(),0); 
+//		csSQL = sSQL;
+		if (!pDB->Upsert(t))
 		{
 			printf("** Error executing: %s\n", sSQL);
 		}
-#endif
 	}
 
 }

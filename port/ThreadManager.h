@@ -58,6 +58,8 @@ public:
 	CThreadManager();
 	~CThreadManager();
 
+        void setDataStorage(CDataStorage *pdb);
+
 	void InitThreads(int threadcount);
 	void EndThreads();
 

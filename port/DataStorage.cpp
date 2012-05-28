@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "DataStorage.h"
+#include <algorithm>
+#include <iostream>
+#include <string>
 
+using namespace std;
 
 CDataStorage::CDataStorage(void)
 {
@@ -12,62 +16,20 @@ CDataStorage::~CDataStorage(void)
 }
 
 
-bool CDataStorage::OpenConnection(string sDSN, short iTimeOut, long eCursorLocation, long eConnectMode)
+bool CDataStorage::OpenConnection(string sDSN)
 {
-	bool bRtn=false;
-#if 0
-	USES_CONVERSION;
-
-	try {
-		HRESULT hr = m_AdoConnection.CreateInstance(__uuidof(ADODB::Connection));
-		if (SUCCEEDED(hr))
-		{
-			m_DSN = sDSN;
-			_bstr_t aBSTR = T2OLE ((LPTSTR)sDSN.c_str() );
-
-			m_AdoConnection->put_ConnectionString(aBSTR);		
-			m_AdoConnection->put_CommandTimeout( iTimeOut );
-			m_AdoConnection->put_CursorLocation( (ADODB::CursorLocationEnum )eCursorLocation );
-			m_AdoConnection->put_Mode( (ADODB::ConnectModeEnum )eConnectMode );
-		
-			OutputDebugString(aBSTR);
-			hr = m_AdoConnection->Open(aBSTR,_bstr_t(""),_bstr_t(""),ADODB::adOptionUnspecified);
-		
-			if( hr == S_OK )
-				bRtn = true;
-		}
-	}
-	catch ( _com_error ex)
-	{
-		OutputDebugString( ex.Description());
-	}
-
-#endif
-	return bRtn;
+    connection = OCI_ConnectionCreate("xe", "kyoung", "dummypw", OCI_SESSION_DEFAULT);
+    if (connection == NULL) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
-bool CDataStorage::CloseConnection()
-{
-#if 0
-	if( m_AdoConnection != NULL )
-	{
-		long connState;
-		m_AdoConnection->get_State( &connState );
-		if( connState == ADODB::adStateOpen )
-			m_AdoConnection->Close();
-	}
-
-	m_AdoConnection=NULL;
-
-#endif
-	return true;
-}
-
-#if 0
+#if DBSUPPORT
 bool CDataStorage::OpenRecordset(ADODB::_RecordsetPtr& spRsNew, string sSQL,  long lMaxRecords, long eCursorType, long eLockType, bool bDisconnect)
 {
 	bool bRtn = false;
-	USES_CONVERSION;
 
 	try
 	{
@@ -120,64 +82,63 @@ bool CDataStorage::OpenRecordset(ADODB::_RecordsetPtr& spRsNew, string sSQL,  lo
 }
 #endif
 
+#if 0
 bool CDataStorage::ExecuteSQL(string & sSQL)
 {
-	bool bRtn = false;
-#if 0
-	HRESULT hr = E_FAIL;
+    OCI_Statement *st;
 
-	try
-	{
-		ADODB::_RecordsetPtr spRs = NULL;
-		spRs = m_AdoConnection->Execute(_bstr_t(sSQL.c_str()),&vtMissing, -1);
+    st = OCI_StatementCreate(connection);
+    if (!st) { return false; }
 
-		if( spRs != NULL )
-			bRtn = true;
-	}
-	catch(_com_error &e)
-	{
-		//Handle errors
-		char ErrorStr[1000];
-		_bstr_t bstrSource(e.Source());
-		_bstr_t bstrDescription(e.Description());
+    if (!OCI_Prepare(st, sSQL.c_str()) || !OCI_Execute(st)) {
+        return false;
+    }
 
-		sprintf_s(ErrorStr, 1000, "ExecuteSQL Error\n\tCode = %08lx\n\tCode meaning = %s\n\tSource = %s\n\tDescription = %s\n",
-			e.Error(), e.ErrorMessage(), (LPCSTR)bstrSource, (LPCSTR)bstrDescription );
-		OutputDebugString(ErrorStr);
-	}
+    if (!OCI_Commit(connection)) {
+        return false;
+    }
 
-#endif
-   	return bRtn;
+    return true;
 }
-
-
-
-bool CDataStorage::TestConnection(void)
-{
-	bool bRtn = false;
-#if 0
-        
-        bRtn = OpenConnection("Provider=SQLOLEDB;Data Source=127.0.0.1;Initial Catalog=SemanticDB;User Id=cs267;Password=harmonic");
-
-	if (bRtn)
-	{
-		ADODB::_RecordsetPtr rs = NULL;
-		OpenRecordset(rs,"SELECT * FROM URLPages");
-
-		while(!(rs->EndOfFile))
-		{
-			CComVariant cv = rs->Fields->GetItem("Location")->GetValue();
-
-			_bstr_t bs = cv.bstrVal;
-			OutputDebugString(bs);
-
-			rs->MoveNext();
-		}
-
-		string sql="exec sp_DBInsert URLPages, 'ID, URL, Location','''13'', ''URL13'', ''LOC13'' '";
-		ExecuteSQL(sql);
-	}
-
 #endif
-	return bRtn;
+
+bool CDataStorage::Upsert(CToken& t)
+{
+    OCI_Statement *st;
+    char sSQL[1000];
+    int rows;
+    string token = t.getToken();
+//    char *token = replace(orig_token.begin(), orig_token.end(), '.', ' ');
+    replace(token.begin(), token.end(), '\'', ' ');
+
+    sprintf(sSQL, "update Concepts set Tokens = '%s', Frequency = %ld, DocFrequency = %ld, Perm = %d where ID = %ld", token.c_str(), t.Freq(), t.DocFreq(), 0, t.DBID());
+
+    st = OCI_StatementCreate(connection);
+    if (!st) { return false; }
+
+    if (!OCI_Prepare(st, sSQL) || !OCI_Execute(st)) {
+printf("@@@ A\n");
+        return false;
+    }
+
+    rows = OCI_GetAffectedRows(st);
+    if (rows == 0) {
+        OCI_StatementFree(st);
+        st = OCI_StatementCreate(connection);
+        if (!st) { return false; }
+        sprintf(sSQL, "insert into Concepts (Tokens, Frequency, DocFrequency, Perm, TokenCount, ID) values ('%s', %ld, %ld, %d, %d, %ld)", token.c_str(), t.Freq(), t.DocFreq(), 0, 1, t.DBID());
+        if (!OCI_Prepare(st, sSQL) || !OCI_Execute(st)) {
+printf("@@@ B\n");
+            return false;
+        }
+    }
+
+    if (!OCI_Commit(connection)) {
+printf("@@@ C\n");
+        return false;
+    }
+
+    OCI_StatementFree(st);
+
+    return true;
 }

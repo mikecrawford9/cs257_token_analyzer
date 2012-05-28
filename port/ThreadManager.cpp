@@ -3,6 +3,11 @@
 #include "DataStorage.h"
 #include <pthread.h>
 
+void CThreadManager::setDataStorage(CDataStorage *pdb)
+{
+    mDB = pdb;
+}
+
 bool CThreadManager::mergeTupleList(long targetTupleCount, CFreqList& freqTuples)
 {
 //	CSLock cslock(mCSGuardTupleLists);
@@ -268,7 +273,7 @@ void CThreadManager::outputToFile(P267_FILE *ofp, char* filename, deque<CToken>&
 			} 
 			else {
 				fprintf(ofp,"\"%s\", %s,%ld\n",aToken.getToken(),filename,aToken.getPos());
-#if 0   // Commented out until DB output is supported.
+#if DBSUPPORT   // Commented out until DB output is supported.
 				//fprintf(ofp,"%-20s\t%-30s\t%-10d\n",aToken.getToken(),srcfilename,aToken.getPos());
 				sprintf(sSQL, "exec sp_UpdateConcept %ld, %s, %d, %ld, %ld, %d", aToken.DBID(), aToken.getToken(), 1, aToken.Freq(), aToken.DocFreq(),0); 
 				string csSQL = sSQL;
@@ -502,11 +507,11 @@ void CThreadManager::InitFromDB(CDataStorage *pdb)
 /////////////////// GARBAGE CODE TAKEN OUT DURING PORTING ///////////////////
 /////////////////// FEEL FREE TO REMOVE COMPLETELY //////////////////////////
 
+#if 0
 //#define WIN32_LEAN_AND_MEAN 
 
 //Each thread instance will run its own instance of this function.
 
-#if 0
 DWORD CThreadManager::ThreadProc() 
 {
 	static int nextThreadID=0;
